@@ -86,7 +86,7 @@ class replay_memory:
         # Initialize the replay memory with a batch size of 32 and 
         # a memory windows of size 2000
         self.batch_size = batch_size
-        self.memory_size = 1000
+        self.memory_size = 900
         self.memory = deque(maxlen = self.memory_size)
         
         # Hyperparameter for the q Learning step
@@ -143,10 +143,12 @@ class replay_memory:
             weights_target = target_dqn.get_weights()
             weights_action = action_dqn.get_weights()
 
-            for layer in range(len(weights_target)):
+            """for layer in range(len(weights_target)):
                 weights_target[layer] = self.tau * weights_target[layer] + weights_action[layer] * (1 - self.tau)
 
-            target_dqn.set_weights(weights_target)
+            target_dqn.set_weights(weights_target)"""
+
+            target_dqn.set_weights(weights_action)
         
         return target_dqn, action_dqn
     
