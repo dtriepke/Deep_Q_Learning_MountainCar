@@ -1,6 +1,9 @@
 
 import sys
 import gym
+from gym.envs.classic_control.mountain_car import MountainCarEnv
+from gym.wrappers.time_limit import TimeLimit
+
 import numpy as np
 import random
 from collections import deque
@@ -10,9 +13,13 @@ from keras.layers import Dense, Dropout
 from keras.optimizers import Adam
 
 def print_progress(msg):
-    
     sys.stdout.write("\r" + msg)
     sys.stdout.flush()
+
+
+def patientMountainCar():
+    env = MountainCarEnv()
+    return TimeLimit(env, max_episode_steps = 10000)
 
 
 class neural_network_keras :
@@ -36,9 +43,7 @@ class neural_network_keras :
         net.add(Dense(self.action_dim))
         net.compile(loss = "mean_squared_error", optimizer = Adam(lr = learning_rate))
         self.dqn = net 
-        
-        # Placeholder for the estimation error of the Q values in t
-        self.error = np.zeros(action_dim, dtype = np.float)
+    
         
         # Placeholder for weights histoiry
         self.weights_history = []
@@ -87,6 +92,9 @@ class replay_memory:
 
         # Cuunter for the replay loop
         self.counter_replay = 0
+
+        # Placeholder for the estimation error of the q values
+        self.error = np.zeros(action_dim, dtype = np.float)
     
         
     def add(self, state, action, next_reward, next_state, done, action_values):
@@ -94,12 +102,30 @@ class replay_memory:
         
         
     def is_full(self):
-        # Boolean return if the memory is full. Since then the update starts
+        # Boolean return if the memory is full as starting point for update
         return True if len(self.memory) == self.memory_size else False
 
-    def _error(self, ):
+
+    def _update_q_values(self):
+
+        for k in reversed(range(self.memory_size - 1)):
+            
+            done = self.memory[k]
+
+
+            if done:
+                # For terminal episode
+                action_values[action] = next_reward
+
+            else:
+                # learning Bellman equation by update rule
+                action_values[action] = next_reward + self.gamma * max(target_dqn.get_q_values(new_state))
+
+
+
+    def _error(self):
         return
-    
+
 
     def q_learning_and_optimize(self, target_dqn, action_dqn):
         """
@@ -110,29 +136,30 @@ class replay_memory:
         
         # Random sample with minibatch size from memory after the 
         # memory is sufficiant full with experiments
-        if self.is_full():
 
-            # Display first training
-            self.counter_replay += 1
-            print("Replay memory is sufficient full, start with inner trainings loop.") if self.counter_replay == 1 else None
+        # Display first training
+        self.counter_replay += 1
+        print("Replay memory is sufficient full, start with inner trainings loop.") if self.counter_replay == 1 else None
 
-            # Draw a mini batch from the replay memory
-            minibatch = random.sample(self.memory, self.batch_size)
+        # Full q learning update of the replay memory
+        self._update_q_values()
+
+        # Error of q values estimated from the action model
+        self._error()
+
+        # Draw a mini batch from the replay memory for training 
+        # the target dqn and taken into account the error relation  
+        minibatch = random.sample(self.memory, self.batch_size)
+        
+
+        """for sample in minibatch:
+            state, action, next_reward, next_state, done, action_values = sample
+            target_action_values = target_dqn.get_q_values(state)"""
             
-            for sample in minibatch:
-                state, action, next_reward, new_state, done, action_values = sample
-                target_action_values = target_dqn.get_q_values(state)
 
-                if done:
-                    # For terminal episode
-                    target_action_values[action] = next_reward
-
-                else:
-                    # learning Bellman equation by update rule
-                    target_action_values[action] = next_reward + self.gamma * max(target_dqn.get_q_values(new_state))
-
-                # Perform a gradient descent step with respect to the action dqn parameter
-                action_dqn.optimize(state, action_values)
+            # Perform a gradient descent step with respect to the action dqn parameter
+            # TODO: optimize with batch (not per entrie)
+            action_dqn.optimize(state, action_values)
         
         return target_dqn, action_dqn
     
@@ -205,7 +232,7 @@ class agent:
             action = np.random.randint(low = 0, high = self.action_dim)
 
         else :
-            # Otherwise select action with highest Q value
+            # Otherwise select action with highest q value
             action = np.argmax(action_values)
 
         return action, action_values, self.epsilon
@@ -215,31 +242,34 @@ class agent:
 
     def run(self, num_episode, num_steps):
 
-        # Initial the run
-        done = True
-        
+        # Run variables
         counter_episodes = 0
         counter_wins = 0 
         counter_training = 0
-
-        self.target_dqn.add_weights_to_history()
-        self.action_dqn.add_weights_to_history()
-
         
+        success_df = pd.DataFrame({
+            'episode': np.zeros(num_episode, dtype = np.int),
+            'counter_wins' : np.zeros(num_episode, dtype = np.int),
+            'counter_episode_step' : np.zeros(num_epsidode,dtype = np.float),
+            'weights_action_model' : np.zeros(num_episode, dtype = np.float),
+            'weights_target_model' : np.zeros(num_episode, dtype = np.float),
+            'mean_q_value' : np.zeros(num_episode, dtype = np.float)
+            }   
+        )
+        
+        while counter_episodes < num_episode:
 
+            # Store the dqn weights for each episode 
+            self.target_dqn.add_weights_to_history()
+            self.action_dqn.add_weights_to_history()
 
-        while num_episode >= counter_episodes:
-
-            # Init game after the end of an episode
-            if done:
-                counter_episodes += 1 # Count +1 episode
-                state = self.env.reset() # Reste game-environment
-                reward_episode = 0.0 # Rest episodic reward 
-                action_value_episode = [] # Reset q-values
-                counter_steps = 0 # Rest step counter
+            state = self.env.reset() # Reste game-environment
+            reward_episode = 0.0 # Rest episodic reward 
+            action_value_episode = [] # Reset q values
+            
+            counter_episodes += 1 # Count +1 episode
+            counter_steps = 0 # Rest step counter
                 
-
-
             for step in range(num_steps): 
                 counter_steps += 1 
 
@@ -248,7 +278,6 @@ class agent:
                     self.env.render()
 
                 # Determine the action for each step by an epsilon greedy algorithm.
-                #print("\t Epsilon Greedy action selection")
                 action, action_values, epsilon = self._epsilon_greedy(state)
                 
                 # Add optimal action value to list
@@ -256,22 +285,21 @@ class agent:
 
                 #print("\t Game {} Step {} epsilon {} Q Values {} (max = {})".format(counter_episodes, counter_steps, epsilon, action_values, max(action_values)))
 
-
                 # Take the choosen action in the game environment and receive
                 # the next state, reward and the episode status.
                 # Done is true if max step or the terminal state.
                 next_state, next_reward, done, _ = self.env.step(action)
                 
-                # Sum the reward for this episode
-                reward_episode += next_reward
-
-                # Re-determine a win
                 # A win is determined by reaching the goal position of 0.5
                 if next_state[0] >= 0.499:
                     counter_wins += 1 
                     done = True
                     next_reward = 100
-                    
+                    self.action_dqn.save("success_model_episode_{}_before_train.h5".format(counter_episodes)) 
+
+                # Sum the reward for this episode
+                reward_episode += next_reward
+
                 if counter_steps == num_steps:
                     done = True
 
@@ -279,9 +307,8 @@ class agent:
                     
                     # Add experiment to the reply memory
                     # TODO: Add q values from action dqn
-                    self.replay_memory.add(state, action, next_reward, next_state, done)
+                    self.replay_memory.add(state, action, next_reward, next_state, done, action_values)
 
-                    
                     # Random sample a minibatch form the experiment memory, 
                     # update q values with DP and apply a gradient descent step
                     # per sample from the minibatch
@@ -289,9 +316,10 @@ class agent:
                     #      - extract clone part 
                     #      - Error scaling / normalize reward: x - mean(x) / std(x)
                     #      - Include 
-                    self.target_dqn, self.action_dqn = self.replay_memory \
-                        .q_learning_and_optimize(target_dqn = self.target_dqn, action_dqn = self.action_dqn)
 
+                    if self.replay_memory.is_full():
+                        self.target_dqn, self.action_dqn = self.replay_memory \
+                            .q_learning_and_optimize(target_dqn = self.target_dqn, action_dqn = self.action_dqn)
 
                     # After C steps the weights are cloned
                     # weights_target = target_dqn.get_weights()
@@ -302,13 +330,13 @@ class agent:
 
                     target_dqn.set_weights(weights_action)
                                 
-                            # Store the progressive of the weight adjustment in a memory per dqn
+                    # Store the progressive of the weight adjustment in a memory per dqn
                     self.target_dqn.add_weights_to_history()
                     self.action_dqn.add_weights_to_history()
 
                     # Store a success model after trainig
                     if next_state[0] >= 0.499:
-                        self.action_dqn.save("success_model_episode_{}.h5".format(counter_episodes)) 
+                        self.action_dqn.save("success_model_episode_{}_after_train.h5".format(counter_episodes)) 
 
                 # Set state as next state
                 state = next_state 
@@ -318,13 +346,12 @@ class agent:
 
             # After each game/epsode add the success to the over all list
             mean_action_value_episode = np.mean(action_value_episode)
-            median_action_values_episode = np.median(action_value_episode)
             self.mean_action_value_all.append(mean_action_value_episode) 
             self.reward_all.append(reward_episode)
             self.wins_all.append(counter_wins)
             
              # Print results
-            print(" Game :: {} Wins :: {} Mean Q Value :: {}  Median Q Values :: {} ".format(counter_episodes, counter_wins, mean_action_value_episode, median_action_values_episode) )
+            print(" Game :: {} Wins :: {} Steps :: {} Reward {} Mean Q Value :: {}  ".format(counter_episodes, counter_wins, counter_steps, reward_episode, mean_action_value_episode) )
 
 
 
@@ -335,7 +362,9 @@ if __name__ == '__main__':
         pass
 
     print("Init game-environment and agent")
-    env = gym.make("MountainCar-v0")
+    # env = gym.make("MountainCar-v0")
+    env = patientMountainCar()
+
     agentDQN = agent(env  = env, training = True, render = False)
 
     # Training

@@ -1,6 +1,9 @@
-
 import sys
+import os
 import gym
+from gym.envs.classic_control.mountain_car import MountainCarEnv
+from gym.wrappers.time_limit import TimeLimit
+
 import numpy as np
 import random
 from collections import deque
@@ -10,9 +13,13 @@ from keras.layers import Dense, Dropout
 from keras.optimizers import Adam
 
 def print_progress(msg):
-    
     sys.stdout.write("\r" + msg)
     sys.stdout.flush()
+
+
+def patientMountainCar():
+    env = MountainCarEnv()
+    return TimeLimit(env, max_episode_steps = 10000)
 
 
 class neural_network_keras :
@@ -66,10 +73,12 @@ class neural_network_keras :
         weights = self.get_weights()
         self.weights_history.append(weights)
     
-    
     def save(self, path):
-        self.dqn.save("01_trail_model_simple/version2/" + path)
+        if not os.path.exists("model/version_simple/"):
+            os.makedirs("model/version_simple/")
+        self.dqn.save("model/version_simple/" + path)
     
+
 class replay_memory:
     
     def __init__(self, batch_size):
@@ -77,17 +86,17 @@ class replay_memory:
         # Initialize the replay memory with a batch size of 32 and 
         # a memory windows of size 2000
         self.batch_size = batch_size
-        self.memory_size = 2000
+        self.memory_size = 1000
         self.memory = deque(maxlen = self.memory_size)
         
-        # Hyperparameter for the Q Learning step
+        # Hyperparameter for the q Learning step
         self.gamma = 0.97
         self.tau = 1 - 0.125 
 
         # Cuunter for the replay loop
         self.counter_replay = 0
     
-        
+
     def add(self, state, action, next_reward, next_state, done):
         self.memory.append([state, action, next_reward, next_state, done])
         
@@ -95,7 +104,7 @@ class replay_memory:
     def is_full(self):
         # Boolean return if the memory is full. Since then the update starts
         return True if len(self.memory) == self.memory_size else False
-    
+
 
     def q_learning_and_optimize(self, target_dqn, action_dqn):
         """
@@ -110,7 +119,7 @@ class replay_memory:
 
             # Display first training
             self.counter_replay += 1
-            print("Replay memory is sufficient full, start with inner trainings loop.") if self.counter_replay == 1 else None
+            print("\tReplay memory is sufficient full, start with inner trainings loop.") if self.counter_replay == 1 else None
 
             # Draw a mini batch from the replay memory
             minibatch = random.sample(self.memory, self.batch_size)
@@ -179,15 +188,11 @@ class agent:
         else: 
             self.replay_memory = None
         
-
-
         # Log of the rewards obtained in each episode during calls to run()
         self.mean_action_value_all = []
         self.reward_all = []
         self.wins_all = []
 
-        
-        
     # Select action on a epsilon greedy algorithm.
     # During testing, epsilon is fix lower, e.g. 0.05 or 0.01
     # During training, the epsilon decrease liniear.
@@ -196,7 +201,6 @@ class agent:
         if self.training:
             epsilon_min = 0.01
             epsilon_decay = 0.99
-
             epsilon = self.epsilon * epsilon_decay
             self.epsilon = max(epsilon_min, epsilon)
         
@@ -210,41 +214,31 @@ class agent:
             action = np.random.randint(low = 0, high = self.action_dim)
 
         else :
-            # Otherwise select action with highest Q value
+            # Otherwise select action with highest q value
             action = np.argmax(action_values)
 
         return action, action_values, self.epsilon
 
 
-
-
     def run(self, num_episode, num_steps):
 
         # Initial the run
-        done = True
-        
         counter_episodes = 0
         counter_wins = 0 
         counter_training = 0
 
-        self.target_dqn.add_weights_to_history()
-        self.action_dqn.add_weights_to_history()
-
-        
-
-
-        while num_episode >= counter_episodes:
+        while counter_episodes < num_episode:
 
             # Init game after the end of an episode
-            if done:
-                counter_episodes += 1 # Count +1 episode
-                state = self.env.reset() # Reste game-environment
-                reward_episode = 0.0 # Rest episodic reward 
-                action_value_episode = [] # Reset q-values
-                counter_steps = 0 # Rest step counter
+            state = self.env.reset() # Reste game-environment
+            reward_episode = 0.0 # Rest episodic reward 
+            action_value_episode = [] # Reset q-values
+            counter_episodes += 1 # Count +1 episode
+            counter_steps = 0 # Rest step counter
+
+            self.target_dqn.add_weights_to_history()
+            self.action_dqn.add_weights_to_history()
                 
-
-
             for step in range(num_steps): 
                 counter_steps += 1 
 
@@ -253,7 +247,6 @@ class agent:
                     self.env.render()
 
                 # Determine the action for each step by an epsilon greedy algorithm.
-                #print("\t Epsilon Greedy action selection")
                 action, action_values, epsilon = self._epsilon_greedy(state)
                 
                 # Add optimal action value to list
@@ -261,22 +254,22 @@ class agent:
 
                 #print("\t Game {} Step {} epsilon {} Q Values {} (max = {})".format(counter_episodes, counter_steps, epsilon, action_values, max(action_values)))
 
-
                 # Take the choosen action in the game environment and receive
                 # the next state, reward and the episode status.
                 # Done is true if max step or the terminal state.
                 next_state, next_reward, done, _ = self.env.step(action)
                 
-                # Sum the reward for this episode
-                reward_episode += next_reward
-
-                # Re-determine a win
                 # A win is determined by reaching the goal position of 0.5
                 if next_state[0] >= 0.499:
                     counter_wins += 1 
                     done = True
                     next_reward = 100
-                    
+                    if self.training:
+                        self.action_dqn.save("success_model_episode_{}.h5".format(counter_episodes)) 
+
+                # Sum the reward for this episode
+                reward_episode += next_reward
+
                 if counter_steps == num_steps:
                     done = True
 
@@ -285,7 +278,6 @@ class agent:
                     # Add experiment to the reply memory
                     self.replay_memory.add(state, action, next_reward, next_state, done)
 
-                    
                     # Random sample a minibatch form the experiment memory, 
                     # update q values with DP and apply a gradient descent step
                     # per sample from the minibatch
@@ -295,11 +287,7 @@ class agent:
                     # Store the progressive of the weight adjustment in a memory per dqn
                     self.target_dqn.add_weights_to_history()
                     self.action_dqn.add_weights_to_history()
-
-                    # Store a success model after trainig
-                    if next_state[0] >= 0.499:
-                        self.action_dqn.save("success_model_episode_{}.h5".format(counter_episodes)) 
-
+                        
                 # Set state as next state
                 state = next_state 
 
@@ -308,13 +296,12 @@ class agent:
 
             # After each game/epsode add the success to the over all list
             mean_action_value_episode = np.mean(action_value_episode)
-            median_action_values_episode = np.median(action_value_episode)
             self.mean_action_value_all.append(mean_action_value_episode) 
             self.reward_all.append(reward_episode)
             self.wins_all.append(counter_wins)
             
              # Print results
-            print(" Game :: {} Wins :: {} Mean Q Value :: {}  Median Q Values :: {} ".format(counter_episodes, counter_wins, mean_action_value_episode, median_action_values_episode) )
+            print(" Game :: {} Wins :: {} Steps :: {} Reward {} Mean Q Value :: {}  ".format(counter_episodes, counter_wins, counter_steps, reward_episode, mean_action_value_episode) )
 
 
 
@@ -325,7 +312,8 @@ if __name__ == '__main__':
         pass
 
     print("Init game-environment and agent")
-    env = gym.make("MountainCar-v0")
+    #env = gym.make("MountainCar-v0")
+    env = patientMountainCar()
     agentDQN = agent(env  = env, training = True, render = False)
 
     # Training
