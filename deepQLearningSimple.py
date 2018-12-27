@@ -338,21 +338,24 @@ class agent:
 
                 if done:
                     break
-
-            # After each game/episode add the success to the over all list
-            # and store the result locally
-            mean_action_value_episode = np.mean(action_value_episode)
-            self.writer_history.add_to_history(
-                episode = counter_episodes, 
-                steps = counter_steps, 
-                reward = reward_episode, 
-                cum_win = counter_wins, 
-                mean_q_values = mean_action_value_episode, 
-                max_position = max_position, 
-                final_position = state[0]
-                )
             
-            self.writer_history.save()
+            # Mean q value per episode
+            mean_action_value_episode = np.mean(action_value_episode)
+
+            if self.training:
+                # After each game/episode add the success to the over all list
+                # and store the result locally
+                self.writer_history.add_to_history(
+                    episode = counter_episodes, 
+                    steps = counter_steps, 
+                    reward = reward_episode, 
+                    cum_win = counter_wins, 
+                    mean_q_values = mean_action_value_episode, 
+                    max_position = max_position, 
+                    final_position = state[0]
+                    )
+                
+                self.writer_history.save()
             
              # Print results
             print(" Game :: {} Wins :: {} Steps :: {} Reward {} Mean Q Value :: {}  ".format(counter_episodes, counter_wins, counter_steps, reward_episode, mean_action_value_episode) )
