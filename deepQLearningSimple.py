@@ -296,7 +296,7 @@ class agent:
                 next_state, next_reward, done, _ = self.env.step(action)
 
                 # Modify reward
-                reward = next_state[0] 
+                next_reward = next_state[0] 
                 
                 # Re-define the goal
                 if next_state[0] >= 0.499:
@@ -316,7 +316,6 @@ class agent:
                 if counter_steps == num_steps:
                     done = True
 
-
                 # Start replay memory loop
                 if self.training:
                     
@@ -328,10 +327,6 @@ class agent:
                     # per sample from the minibatch
                     self.target_dqn, self.action_dqn = self.replay_memory \
                         .q_learning_and_optimize(target_dqn = self.target_dqn, action_dqn = self.action_dqn)
-                        
-                    """# Store the progressive of the weight adjustment in a memory per dqn
-                    self.target_dqn.add_weights_to_history()
-                    self.action_dqn.add_weights_to_history()"""
                         
                 # Set state as next state
                 state = next_state 
