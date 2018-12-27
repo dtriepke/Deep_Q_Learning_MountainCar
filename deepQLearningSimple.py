@@ -294,6 +294,9 @@ class agent:
                 # Take the choosen action in the game environment and receive
                 # the next state, reward and the episode status.
                 next_state, next_reward, done, _ = self.env.step(action)
+
+                # Modify reward
+                reward = next_state[0] 
                 
                 # Re-define the goal
                 if next_state[0] >= 0.499:
