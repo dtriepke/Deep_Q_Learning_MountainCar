@@ -220,7 +220,7 @@ class agent:
         
         if self.training:
             # Create replay memory only if the agent trained
-            self.replay_memory = replay_memory(batch_size = 32)
+            self.replay_memory = replay_memory(batch_size = 64)
 
             # Epsilon for random action selection
             self.epsilon = 1.0
