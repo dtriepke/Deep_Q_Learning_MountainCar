@@ -151,6 +151,11 @@ class replay_memory:
             target_dqn.set_weights(weights_action)
         
         return target_dqn, action_dqn
+
+class writer:
+
+    def __init__(self):
+        
     
 class agent:
     """
