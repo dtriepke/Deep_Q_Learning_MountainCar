@@ -166,12 +166,9 @@ class writer:
         self.history["position"] = {}
         self.history["position"]["max_position"] = []
         self.history["position"]["final_position"] = []
-        self.history["weights"] = {}
-        self.history["weights"]["target_dqn"] = []
-        self.history["weights"]["action_dqn"] = []
     
 
-    def add_to_history(self, episode, steps, reward, cum_win, mean_q_values, max_position, final_position, target_dqn,  action_dqn):
+    def add_to_history(self, episode, steps, reward, cum_win, mean_q_values, max_position, final_position):
         self.history["episode"].append(int(episode))
         self.history["steps"].append(int(steps))
         self.history["reward"].append(int(reward))
@@ -179,8 +176,6 @@ class writer:
         self.history["mean_q_values"].append(float(mean_q_values))
         self.history["position"]["max_position"].append(float(max_position))
         self.history["position"]["final_position"].append(float(final_position))
-        self.history["weights"]["target_dqn"].append(target_dqn)
-        self.history["weights"]["action_dqn"].append(action_dqn)
         
         
     def save(self):
@@ -344,17 +339,15 @@ class agent:
             # After each game/episode add the success to the over all list
             # and store the result locally
             mean_action_value_episode = np.mean(action_value_episode)
-
-
-            self.writer_history.add_to_history(episode = counter_episodes, 
-                                steps = counter_steps, 
-                                reward = reward_episode, 
-                                cum_win = counter_wins, 
-                                mean_q_values = mean_action_value_episode, 
-                                max_position = max_position, 
-                                final_position = state[0], 
-                                target_dqn = None,  
-                                action_dqn = None)
+            self.writer_history.add_to_history(
+                episode = counter_episodes, 
+                steps = counter_steps, 
+                reward = reward_episode, 
+                cum_win = counter_wins, 
+                mean_q_values = mean_action_value_episode, 
+                max_position = max_position, 
+                final_position = state[0]
+                )
             
             self.writer_history.save()
             
@@ -376,7 +369,7 @@ if __name__ == '__main__':
 
     # Training
     print("Start Training")
-    agentDQN.run(num_episode = 2, num_steps = 500)
+    agentDQN.run(num_episode = 1000, num_steps = 500)
 
     # Saving model
     print("Save end-of-run model")
