@@ -1,5 +1,6 @@
 import sys
 import os
+import json
 import gym
 from gym.envs.classic_control.mountain_car import MountainCarEnv
 from gym.wrappers.time_limit import TimeLimit
@@ -43,13 +44,7 @@ class neural_network_keras :
         net.compile(loss = "mean_squared_error", optimizer = Adam(lr = learning_rate))
         self.dqn = net 
         
-        # Placeholder for the estimation error of the Q values in t
-        self.error = np.zeros(action_dim, dtype = np.float)
-        
-        # Placeholder for weights histoiry
-        self.weights_history = []
-        
-        
+
     def get_q_values(self, state):
         """ Calculate the q-values for all actions given a sate."""
         action_values = self.dqn.predict(state.reshape(1, self.obs_dim))[0]
@@ -61,23 +56,21 @@ class neural_network_keras :
         action_values = np.array(action_values).reshape(1, self.action_dim)
         return self.dqn.fit(state, action_values, epochs = 1, verbose = 0)
     
-    
+
     def get_weights(self):
         return self.dqn.get_weights()
     
-    
+
     def set_weights(self, weights):
         return self.dqn.set_weights(weights)
-    
-    def add_weights_to_history(self):
-        weights = self.get_weights()
-        self.weights_history.append(weights)
-    
+
+
     def save(self, path):
-        if not os.path.exists("model/version_simple/"):
-            os.makedirs("model/version_simple/")
-        self.dqn.save("model/version_simple/" + path)
-    
+        if not os.path.exists("data/model/version_simple/"):
+            os.makedirs("data/model/version_simple/")
+        self.dqn.save("data/model/version_simple/" + path)
+
+ #--------------------------------------------------------------------------------------------   
 
 class replay_memory:
     
@@ -152,11 +145,51 @@ class replay_memory:
         
         return target_dqn, action_dqn
 
+#-------------------------------------------------------------------------------------------------------------------
+
 class writer:
 
-    def __init__(self):
+    def __init__(self, path):
         
+        # Init path
+        self.path = path
+        if not os.path.exists("data/history/{}".format(self.path)):
+            os.makedirs("data/history/{}".format(self.path))
+
+        # Init history
+        self.history = {}
+        self.history["episode"] = []
+        self.history["steps"] = []
+        self.history["reward"] = []
+        self.history["cum_win"] = []
+        self.history["mean_q_values"] = []
+        self.history["position"] = {}
+        self.history["position"]["max_position"] = []
+        self.history["position"]["final_position"] = []
     
+
+    def add_to_history(self, episode, steps, reward, cum_win, mean_q_values, max_position, final_position):
+        self.history["episode"].append(int(episode))
+        self.history["steps"].append(int(steps))
+        self.history["reward"].append(int(reward))
+        self.history["cum_win"].append(int(cum_win))
+        self.history["mean_q_values"].append(float(mean_q_values))
+        self.history["position"]["max_position"].append(float(max_position))
+        self.history["position"]["final_position"].append(float(final_position))
+        
+        
+    def save(self):
+        
+        # convert into JSON
+        y = json.dumps(self.history)
+        
+        # write to local
+        f = open("./data/history/{}/history.json".format(self.path), "w+")
+        f.write(y)
+        f.close()
+
+  #-----------------------------------------------------------------------------------------------------------
+
 class agent:
     """
     Implementation for playing the game and initialize the function 
@@ -191,14 +224,13 @@ class agent:
 
             # Epsilon for random action selection
             self.epsilon = 1.0
+
+            # History/ Storage for the results per episode
+            self.writer_history = writer("version_simple")
             
         else: 
             self.replay_memory = None
         
-        # Log of the rewards obtained in each episode during calls to run()
-        self.mean_action_value_all = []
-        self.reward_all = []
-        self.wins_all = []
 
     # Select action on a epsilon greedy algorithm.
     # During testing, epsilon is fix lower, e.g. 0.05 or 0.01
@@ -232,19 +264,19 @@ class agent:
         # Initial the run
         counter_episodes = 0
         counter_wins = 0 
-        counter_training = 0
 
         while counter_episodes < num_episode:
 
             # Init game after the end of an episode
+            counter_episodes += 1 # Count +1 episode
             state = self.env.reset() # Reste game-environment
             reward_episode = 0.0 # Rest episodic reward 
             action_value_episode = [] # Reset q-values
-            counter_episodes += 1 # Count +1 episode
             counter_steps = 0 # Rest step counter
+            max_position = 0.0 # Reset teh max position per episode
 
-            self.target_dqn.add_weights_to_history()
-            self.action_dqn.add_weights_to_history()
+            """self.target_dqn.add_weights_to_history()
+            self.action_dqn.add_weights_to_history()"""
                 
             for step in range(num_steps): 
                 counter_steps += 1 
@@ -259,14 +291,11 @@ class agent:
                 # Add optimal action value to list
                 action_value_episode.append(max(action_values))
 
-                #print("\t Game {} Step {} epsilon {} Q Values {} (max = {})".format(counter_episodes, counter_steps, epsilon, action_values, max(action_values)))
-
                 # Take the choosen action in the game environment and receive
                 # the next state, reward and the episode status.
-                # Done is true if max step or the terminal state.
                 next_state, next_reward, done, _ = self.env.step(action)
                 
-                # A win is determined by reaching the goal position of 0.5
+                # Re-define the goal
                 if next_state[0] >= 0.499:
                     counter_wins += 1 
                     done = True
@@ -277,12 +306,18 @@ class agent:
                 # Sum the reward for this episode
                 reward_episode += next_reward
 
+                # Keep track of the max reached position
+                max_position = max(max_position, next_state[0])
+
+                # End of an episode when max number of steps
                 if counter_steps == num_steps:
                     done = True
 
+
+                # Start replay memory loop
                 if self.training:
                     
-                    # Add experiment to the reply memory
+                    # Add experiment to the replay memory
                     self.replay_memory.add(state, action, next_reward, next_state, done)
 
                     # Random sample a minibatch form the experiment memory, 
@@ -291,9 +326,9 @@ class agent:
                     self.target_dqn, self.action_dqn = self.replay_memory \
                         .q_learning_and_optimize(target_dqn = self.target_dqn, action_dqn = self.action_dqn)
                         
-                    # Store the progressive of the weight adjustment in a memory per dqn
+                    """# Store the progressive of the weight adjustment in a memory per dqn
                     self.target_dqn.add_weights_to_history()
-                    self.action_dqn.add_weights_to_history()
+                    self.action_dqn.add_weights_to_history()"""
                         
                 # Set state as next state
                 state = next_state 
@@ -301,11 +336,20 @@ class agent:
                 if done:
                     break
 
-            # After each game/epsode add the success to the over all list
+            # After each game/episode add the success to the over all list
+            # and store the result locally
             mean_action_value_episode = np.mean(action_value_episode)
-            self.mean_action_value_all.append(mean_action_value_episode) 
-            self.reward_all.append(reward_episode)
-            self.wins_all.append(counter_wins)
+            self.writer_history.add_to_history(
+                episode = counter_episodes, 
+                steps = counter_steps, 
+                reward = reward_episode, 
+                cum_win = counter_wins, 
+                mean_q_values = mean_action_value_episode, 
+                max_position = max_position, 
+                final_position = state[0]
+                )
+            
+            self.writer_history.save()
             
              # Print results
             print(" Game :: {} Wins :: {} Steps :: {} Reward {} Mean Q Value :: {}  ".format(counter_episodes, counter_wins, counter_steps, reward_episode, mean_action_value_episode) )
