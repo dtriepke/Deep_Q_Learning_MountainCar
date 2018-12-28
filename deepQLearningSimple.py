@@ -218,15 +218,15 @@ class agent:
         # Create a neural network as target network for the learning phase
         self.target_dqn = neural_network_keras(obs_dim = self.obs_dim, action_dim = self.action_dim, learning_rate = 0.005)
         
+        # History/ Storage for the results per episode
+        self.writer_history = writer("version_simple")
+
         if self.training:
             # Create replay memory only if the agent trained
             self.replay_memory = replay_memory(batch_size = 64)
 
             # Epsilon for random action selection
             self.epsilon = 1.0
-
-            # History/ Storage for the results per episode
-            self.writer_history = writer("version_simple")
             
         else: 
             self.replay_memory = None
@@ -337,23 +337,24 @@ class agent:
             # Mean q value per episode
             mean_action_value_episode = np.mean(action_value_episode)
 
-            if self.training:
-                # After each game/episode add the success to the over all list
-                # and store the result locally
-                self.writer_history.add_to_history(
-                    episode = counter_episodes, 
-                    steps = counter_steps, 
-                    reward = reward_episode, 
-                    cum_win = counter_wins, 
-                    mean_q_values = mean_action_value_episode, 
-                    max_position = max_position, 
-                    final_position = state[0]
-                    )
+            # After each game/episode add the success to the over all list
+            # and store the result locally
+            self.writer_history.add_to_history(
+                episode = counter_episodes, 
+                steps = counter_steps, 
+                reward = reward_episode, 
+                cum_win = counter_wins, 
+                mean_q_values = mean_action_value_episode, 
+                max_position = max_position, 
+                final_position = state[0]
+                )
                 
+            # Store progressive in trainings mode
+            if self.training:
                 self.writer_history.save()
             
              # Print results
-            print(" Game :: {} Wins :: {} Steps :: {} Reward {} Mean Q Value :: {}  ".format(counter_episodes, counter_wins, counter_steps, reward_episode, mean_action_value_episode) )
+            print(" Game :: {} Wins :: {} Steps :: {} Reward {} Mean Q Value :: {} Max position {} ".format(counter_episodes, counter_wins, counter_steps, reward_episode, mean_action_value_episode, max_position) )
 
 
 
@@ -370,7 +371,7 @@ if __name__ == '__main__':
 
     # Training
     print("Start Training")
-    agentDQN.run(num_episode = 1000, num_steps = 500)
+    agentDQN.run(num_episode = 5000, num_steps = 500)
 
     # Saving model
     print("Save end-of-run model")
