@@ -67,8 +67,10 @@ class neural_network_keras :
 
     def save(self, path, name):
         if not os.path.exists("data/model/{}/".format(path)):
-            os.makedirs(("data/model/{}/".format(path))
-        self.dqn.save(("data/model/{}/{}".format(path, name))
+            os.makedirs("data/model/{}/".format(path))
+        
+        self.dqn.save("data/model/{}/{}".format(path, name))
+
 
  #--------------------------------------------------------------------------------------------   
 
@@ -76,10 +78,9 @@ class replay_memory:
     
     def __init__(self, batch_size):
         
-        # Initialize the replay memory with a batch size of 32 and 
-        # a memory windows of size 2000
+        # Initialize the replay memory
         self.batch_size = batch_size
-        self.memory_size = 900
+        self.memory_size = 2000
         self.memory = deque(maxlen = self.memory_size)
         
         # Hyperparameter for the q Learning step
@@ -257,7 +258,7 @@ class agent:
         return action, action_values, self.epsilon
 
 
-    def run(self, num_episode, num_steps, name):
+    def run(self, num_episode, num_steps, try_name):
 
         # Initial the run
         counter_episodes = 0
@@ -299,7 +300,7 @@ class agent:
                     done = True
                     next_reward = 100
                     if self.training:
-                        self.action_dqn.save(name , "success_model_episode_{}.h5".format(counter_episodes)) 
+                        self.action_dqn.save(try_name , "success_model_episode_{}.h5".format(counter_episodes)) 
 
                 # Sum the reward for this episode
                 reward_episode += next_reward
@@ -346,7 +347,7 @@ class agent:
                 
             # Store progressive in trainings mode
             if self.training:
-                self.writer_history.save(name)
+                self.writer_history.save(try_name)
             
              # Print results
             print(" Game :: {} Wins :: {} Steps :: {} Reward {} Mean Q Value :: {} Max position {} ".format(counter_episodes, counter_wins, counter_steps, reward_episode, mean_action_value_episode, max_position) )
@@ -366,7 +367,7 @@ if __name__ == '__main__':
 
     # Training
     print("Start Training")
-    agentDQN.run(num_episode = 500, num_steps = 500, name = "version_simple")
+    agentDQN.run(num_episode = 1000, num_steps = 500, try_name = "version_simple_max_memory")
 
     # Saving model
     print("Save end-of-run model")
