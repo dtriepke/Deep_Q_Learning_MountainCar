@@ -65,10 +65,10 @@ class neural_network_keras :
         return self.dqn.set_weights(weights)
 
 
-    def save(self, path):
-        if not os.path.exists("data/model/version_simple/"):
-            os.makedirs("data/model/version_simple/")
-        self.dqn.save("data/model/version_simple/" + path)
+    def save(self, path, name):
+        if not os.path.exists("data/model/{}/".format(path)):
+            os.makedirs(("data/model/{}/".format(path))
+        self.dqn.save(("data/model/{}/{}".format(path, name))
 
  #--------------------------------------------------------------------------------------------   
 
@@ -149,12 +149,7 @@ class replay_memory:
 
 class writer:
 
-    def __init__(self, path):
-        
-        # Init path
-        self.path = path
-        if not os.path.exists("data/history/{}".format(self.path)):
-            os.makedirs("data/history/{}".format(self.path))
+    def __init__(self):
 
         # Init history
         self.history = {}
@@ -178,13 +173,16 @@ class writer:
         self.history["position"]["final_position"].append(float(final_position))
         
         
-    def save(self):
+    def save(self, name):
+
+        if not os.path.exists("data/history/{}".format(name)):
+            os.makedirs("data/history/{}".format(name))
         
         # convert into JSON
         y = json.dumps(self.history)
         
         # write to local
-        f = open("./data/history/{}/history.json".format(self.path), "w+")
+        f = open("./data/history/{}/history.json".format(name), "w+")
         f.write(y)
         f.close()
 
@@ -219,7 +217,7 @@ class agent:
         self.target_dqn = neural_network_keras(obs_dim = self.obs_dim, action_dim = self.action_dim, learning_rate = 0.005)
         
         # History/ Storage for the results per episode
-        self.writer_history = writer("version_simple")
+        self.writer_history = writer()
 
         if self.training:
             # Create replay memory only if the agent trained
@@ -259,7 +257,7 @@ class agent:
         return action, action_values, self.epsilon
 
 
-    def run(self, num_episode, num_steps):
+    def run(self, num_episode, num_steps, name):
 
         # Initial the run
         counter_episodes = 0
@@ -274,9 +272,6 @@ class agent:
             action_value_episode = [] # Reset q-values
             counter_steps = 0 # Rest step counter
             max_position = 0.0 # Reset teh max position per episode
-
-            """self.target_dqn.add_weights_to_history()
-            self.action_dqn.add_weights_to_history()"""
                 
             for step in range(num_steps): 
                 counter_steps += 1 
@@ -304,7 +299,7 @@ class agent:
                     done = True
                     next_reward = 100
                     if self.training:
-                        self.action_dqn.save("success_model_episode_{}.h5".format(counter_episodes)) 
+                        self.action_dqn.save(name , "success_model_episode_{}.h5".format(counter_episodes)) 
 
                 # Sum the reward for this episode
                 reward_episode += next_reward
@@ -351,7 +346,7 @@ class agent:
                 
             # Store progressive in trainings mode
             if self.training:
-                self.writer_history.save()
+                self.writer_history.save(name)
             
              # Print results
             print(" Game :: {} Wins :: {} Steps :: {} Reward {} Mean Q Value :: {} Max position {} ".format(counter_episodes, counter_wins, counter_steps, reward_episode, mean_action_value_episode, max_position) )
@@ -371,7 +366,7 @@ if __name__ == '__main__':
 
     # Training
     print("Start Training")
-    agentDQN.run(num_episode = 5000, num_steps = 500)
+    agentDQN.run(num_episode = 500, num_steps = 500, name = "version_simple")
 
     # Saving model
     print("Save end-of-run model")
