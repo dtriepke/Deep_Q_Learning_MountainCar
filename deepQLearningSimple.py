@@ -108,7 +108,7 @@ class replay_memory:
         """
         
         # Random sample with minibatch size from memory after the 
-        # memory is sufficiant full with experiments
+        # memory is sufficiant full with experiences
         if self.is_full():
 
             # Display first training
@@ -120,18 +120,18 @@ class replay_memory:
             
             for sample in minibatch:
                 state, action, next_reward, new_state, done = sample
-                action_values = target_dqn.get_q_values(state)
+                target_action_values = target_dqn.get_q_values(state)
 
                 if done:
                     # For terminal episode
-                    action_values[action] = next_reward
+                    target_action_values[action] = next_reward
 
                 else:
                     # learning Bellman equation by update rule
-                    action_values[action] = next_reward + self.gamma * max(target_dqn.get_q_values(new_state))
+                    target_action_values[action] = next_reward + self.gamma * max(target_dqn.get_q_values(new_state))
 
                 # Perform a gradient descent step with respect to the action dqn parameter
-                action_dqn.optimize(state, action_values)
+                action_dqn.optimize(state, target_action_values)
 
             # After all samples in the minibatch are used for updating the q value, the weights are reset
             weights_target = target_dqn.get_weights()
@@ -258,7 +258,7 @@ class agent:
         return action, action_values, self.epsilon
 
 
-    def run(self, num_episode, num_steps, try_name):
+    def run(self, num_episode, num_steps, try_name = ""):
 
         # Initial the run
         counter_episodes = 0
@@ -295,7 +295,7 @@ class agent:
                 next_reward = next_state[0] 
                 
                 # Re-define the goal
-                if next_state[0] >= 0.499:
+                if next_state[0] >= 0.5:
                     counter_wins += 1 
                     done = True
                     next_reward = 100
@@ -315,10 +315,10 @@ class agent:
                 # Start replay memory loop
                 if self.training:
                     
-                    # Add experiment to the replay memory
+                    # Add experience to the replay memory
                     self.replay_memory.add(state, action, next_reward, next_state, done)
 
-                    # Random sample a minibatch form the experiment memory, 
+                    # Random sample a minibatch form the experience memory, 
                     # update q values with DP and apply a gradient descent step
                     # per sample from the minibatch
                     self.target_dqn, self.action_dqn = self.replay_memory \
@@ -371,6 +371,6 @@ if __name__ == '__main__':
 
     # Saving model
     print("Save end-of-run model")
-    agentDQN.action_dqn.save("end_of_run_model.h5") 
+    agentDQN.action_dqn.save("version_simple_max_memory", "end_of_run_model.h5") 
 
     print("DONE")
