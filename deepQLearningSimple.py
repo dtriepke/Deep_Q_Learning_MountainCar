@@ -35,7 +35,7 @@ class neural_network_keras :
         self.obs_dim = obs_dim
         self.action_dim = action_dim
             
-        # Create a 3 layer neural network   
+        # Create a 1 layer deep neural network   
         net = Sequential()
         net.add(Dense(100, input_dim = self.obs_dim, activation = "relu"))
         # net.add(Dense(32, activation = "relu"))
@@ -290,7 +290,7 @@ class agent:
                 next_reward = next_state[0] 
                 
                 # Re-define the goal
-                if next_state[0] == 0.5:
+                if next_state[0] >= 0.5:
                     counter_wins += 1 
                     done = True
                     next_reward = 10
@@ -363,7 +363,7 @@ if __name__ == '__main__':
     except:
         pass
     
-    try_name = "version_simplev0"
+    try_name = "version_simple_v0"
 
     print("Init game-environment and agent:: %s" % try_name)
     env = patientMountainCar()
