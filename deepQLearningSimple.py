@@ -54,7 +54,7 @@ class neural_network_keras :
     def optimize(self, state, action_values):
         state = state.reshape(1, self.obs_dim)
         action_values = np.array(action_values).reshape(1, self.action_dim)
-        return self.dqn.fit(state, action_values, epochs = 1, verbose = 0)
+        self.dqn.fit(state, action_values, epochs = 1, verbose = 0)
     
 
     def get_weights(self):
@@ -85,7 +85,6 @@ class replay_memory:
         
         # Hyperparameter for the q Learning step
         self.gamma = 0.97
-        self.tau = 1 - 0.125 
 
         # Cuunter for the replay loop
         self.counter_replay = 0
@@ -133,16 +132,11 @@ class replay_memory:
                 # Perform a gradient descent step with respect to the action dqn parameter
                 action_dqn.optimize(state, target_action_values)
 
-            # After all samples in the minibatch are used for updating the q value, the weights are reset
+            """# After all samples in the minibatch are used for updating the q value, the weights are reseted
             weights_target = target_dqn.get_weights()
             weights_action = action_dqn.get_weights()
 
-            """for layer in range(len(weights_target)):
-                weights_target[layer] = self.tau * weights_target[layer] + weights_action[layer] * (1 - self.tau)
-
-            target_dqn.set_weights(weights_target)"""
-
-            target_dqn.set_weights(weights_action)
+            target_dqn.set_weights(weights_action)"""
         
         return target_dqn, action_dqn
 
@@ -323,7 +317,11 @@ class agent:
                     # per sample from the minibatch
                     self.target_dqn, self.action_dqn = self.replay_memory \
                         .q_learning_and_optimize(target_dqn = self.target_dqn, action_dqn = self.action_dqn)
-                        
+
+                    # After all samples in the minibatch are used for updating the q value, the weights are reseted
+                    weights_action = self.action_dqn.get_weights()
+                    self.target_dqn.set_weights(weights_action)
+
                 # Set state as next state
                 state = next_state 
 
