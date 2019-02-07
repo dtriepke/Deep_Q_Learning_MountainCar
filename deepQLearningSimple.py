@@ -62,7 +62,7 @@ class neural_network_keras :
     
 
     def set_weights(self, weights):
-        return self.dqn.set_weights(weights)
+         self.dqn.set_weights(weights)
 
 
     def save(self, path, name):
@@ -324,6 +324,7 @@ class agent:
                         weights_action = self.action_dqn.get_weights()
                         self.target_dqn.set_weights(weights_action)
                         targetUpdateStep += self.C # next update in C steps
+                        print("\t Update target DQN after %s steps" % targetUpdateStep)
 
                 # Set state as next state
                 state = next_state 
@@ -354,6 +355,7 @@ class agent:
             print(" Game :: {} Wins :: {} Steps :: {} Reward {} Mean Q Value :: {} Max position {} ".format(counter_episodes, counter_wins, counter_steps, reward_episode, mean_action_value_episode, max_position) )
 
 
+#------------------------------------------------------------------------------------------------------------------------------------------
 
 if __name__ == '__main__':
     try: 
