@@ -76,15 +76,15 @@ class neural_network_keras :
 
 class replay_memory:
     
-    def __init__(self, batch_size):
+    def __init__(self, memory_size, batch_size, gamma):
         
         # Initialize the replay memory
         self.batch_size = batch_size
-        self.memory_size = 2000
+        self.memory_size = memory_size
         self.memory = deque(maxlen = self.memory_size)
         
         # Hyperparameter for the q Learning step
-        self.gamma = 0.97
+        self.gamma = gamma
 
         # Cuunter for the replay loop
         self.counter_replay = 0
@@ -131,12 +131,7 @@ class replay_memory:
 
                 # Perform a gradient descent step with respect to the action dqn parameter
                 action_dqn.optimize(state, target_action_values)
-
-            """# After all samples in the minibatch are used for updating the q value, the weights are reseted
-            weights_target = target_dqn.get_weights()
-            weights_action = action_dqn.get_weights()
-
-            target_dqn.set_weights(weights_action)"""
+                
         
         return target_dqn, action_dqn
 
@@ -216,10 +211,15 @@ class agent:
 
         if self.training:
             # Create replay memory only if the agent trained
-            self.replay_memory = replay_memory(batch_size = 64)
+            self.replay_memory = replay_memory(memory_size = 2000, 
+                                               batch_size = 64, 
+                                               gamma = 0.99)
 
-            # Epsilon for random action selection
+            # Initialize epsilon for training
             self.epsilon = 1.0
+
+            # Stepsize for updating the target network parameter
+            self.C = 10
             
         else: 
             self.replay_memory = None
@@ -318,9 +318,10 @@ class agent:
                     self.target_dqn, self.action_dqn = self.replay_memory \
                         .q_learning_and_optimize(target_dqn = self.target_dqn, action_dqn = self.action_dqn)
 
-                    # After all samples in the minibatch are used for updating the q value, the weights are reseted
-                    weights_action = self.action_dqn.get_weights()
-                    self.target_dqn.set_weights(weights_action)
+                    # Update target network parameter after C steps
+                    if counter_steps == C:
+                        weights_action = self.action_dqn.get_weights()
+                        self.target_dqn.set_weights(weights_action)
 
                 # Set state as next state
                 state = next_state 
