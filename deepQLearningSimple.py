@@ -37,9 +37,9 @@ class neural_network_keras :
             
         # Create a 3 layer neural network   
         net = Sequential()
-        net.add(Dense(24, input_dim = self.obs_dim, activation = "relu"))
-        net.add(Dense(48, activation = "relu"))
-        net.add(Dense(24, activation = "relu"))
+        net.add(Dense(100, input_dim = self.obs_dim, activation = "relu"))
+        # net.add(Dense(32, activation = "relu"))
+        # net.add(Dense(64, activation = "relu"))
         net.add(Dense(self.action_dim))
         net.compile(loss = "mean_squared_error", optimizer = Adam(lr = learning_rate))
         self.dqn = net 
@@ -86,7 +86,7 @@ class replay_memory:
         # Hyperparameter for the q Learning step
         self.gamma = gamma
 
-        # Cuunter for the replay loop
+        # Counter for the replay loop
         self.counter_replay = 0
     
 
@@ -212,32 +212,32 @@ class agent:
         if self.training:
             # Create replay memory only if the agent trained
             self.replay_memory = replay_memory(memory_size = 2000, 
-                                               batch_size = 64, 
+                                               batch_size = 32, 
                                                gamma = 0.99)
 
             # Initialize epsilon for training
             self.epsilon = 1.0
 
             # Stepsize for updating the target network parameter
-            self.C = 10
+            self.C = 100
             
         else: 
             self.replay_memory = None
         
 
     # Select action on a epsilon greedy algorithm.
-    # During testing, epsilon is fix lower, e.g. 0.05 or 0.01
+    # During testing, epsilon is fix to avoit overfitting
     # During training, the epsilon decrease liniear.
     def _epsilon_greedy(self, state):
 
         if self.training:
-            epsilon_min = 0.01
+            epsilon_min = 0.1
             epsilon_decay = 0.99
             epsilon = self.epsilon * epsilon_decay
             self.epsilon = max(epsilon_min, epsilon)
         
         else:
-            self.epsilon = 0.01
+            self.epsilon = 0.05
 
         action_values = self.action_dqn.get_q_values(state)
 
@@ -290,10 +290,10 @@ class agent:
                 next_reward = next_state[0] 
                 
                 # Re-define the goal
-                if next_state[0] >= 0.5:
+                if next_state[0] == 0.5:
                     counter_wins += 1 
                     done = True
-                    next_reward = 100
+                    next_reward = 10
                     if self.training:
                         self.action_dqn.save(try_name , "success_model_episode_{}.h5".format(counter_episodes)) 
 
@@ -362,18 +362,19 @@ if __name__ == '__main__':
         env.close()
     except:
         pass
+    
+    try_name = "version_simplev0"
 
-    print("Init game-environment and agent")
-    #env = gym.make("MountainCar-v0")
+    print("Init game-environment and agent:: %s" % try_name)
     env = patientMountainCar()
     agentDQN = agent(env  = env, training = True, render = False)
 
     # Training
     print("Start Training")
-    agentDQN.run(num_episode = 1000, num_steps = 500, try_name = "version_simple_max_memory")
+    agentDQN.run(num_episode = 500, num_steps = 500, try_name = try_name)
 
-    # Saving model
+    # Saving last model
     print("Save end-of-run model")
-    agentDQN.action_dqn.save("version_simple_max_memory", "end_of_run_model.h5") 
+    agentDQN.action_dqn.save(try_name, "end_of_run_model.h5") 
 
     print("DONE")
