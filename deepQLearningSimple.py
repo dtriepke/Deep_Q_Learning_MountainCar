@@ -262,6 +262,7 @@ class agent:
 
             # Init game after the end of an episode
             counter_episodes += 1 # Count +1 episode
+            targetUpdateStep = self.C # Keep track of the target value updates
             state = self.env.reset() # Reste game-environment
             reward_episode = 0.0 # Rest episodic reward 
             action_value_episode = [] # Reset q-values
@@ -319,9 +320,10 @@ class agent:
                         .q_learning_and_optimize(target_dqn = self.target_dqn, action_dqn = self.action_dqn)
 
                     # Update target network parameter after C steps
-                    if counter_steps == C:
+                    if counter_steps == targetUpdateStep:
                         weights_action = self.action_dqn.get_weights()
                         self.target_dqn.set_weights(weights_action)
+                        targetUpdateStep += self.C # next update in C steps
 
                 # Set state as next state
                 state = next_state 
