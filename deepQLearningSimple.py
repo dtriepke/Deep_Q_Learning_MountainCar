@@ -223,6 +223,7 @@ class agent:
             
         else: 
             self.replay_memory = None
+            self.C = None
         
 
     # Select action on a epsilon greedy algorithm.
@@ -363,7 +364,7 @@ if __name__ == '__main__':
     except:
         pass
     
-    try_name = "version_simple_v0"
+    try_name = "version_simple_v1"
 
     print("Init game-environment and agent:: %s" % try_name)
     env = patientMountainCar()
@@ -371,7 +372,7 @@ if __name__ == '__main__':
 
     # Training
     print("Start Training")
-    agentDQN.run(num_episode = 500, num_steps = 500, try_name = try_name)
+    agentDQN.run(num_episode = 1000, num_steps = 500, try_name = try_name)
 
     # Saving last model
     print("Save end-of-run model")
