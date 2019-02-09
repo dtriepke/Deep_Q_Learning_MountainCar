@@ -353,7 +353,7 @@ class agent:
                 self.writer_history.save(try_name)
             
              # Print results
-            print(" Game :: {} Wins :: {} Steps :: {} Reward {} Mean Q Value :: {} Max position {} ".format(counter_episodes, counter_wins, counter_steps, reward_episode, mean_action_value_episode, max_position) )
+            print(" Game :: {} Wins :: {} Steps :: {} Reward {:4f} Mean Q Value :: {:4f} Max position {:4f} ".format(counter_episodes, counter_wins, counter_steps, reward_episode, mean_action_value_episode, max_position) )
 
 
 #------------------------------------------------------------------------------------------------------------------------------------------
