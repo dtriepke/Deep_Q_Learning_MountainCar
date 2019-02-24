@@ -24,12 +24,7 @@ def patientMountainCar():
 
 
 class neural_network_keras :
-    """
-    - Create model
-    - Run model / test model
-    - export q values
-    - several model options 
-    """
+
     def __init__(self, obs_dim, action_dim, learning_rate):
         
         self.obs_dim = obs_dim
@@ -83,7 +78,7 @@ class replay_memory:
         self.memory_size = memory_size
         self.memory = deque(maxlen = self.memory_size)
         
-        # Hyperparameter for the q Learning step
+        # Hyperparameter for the q-learning step
         self.gamma = gamma
 
         # Counter for the replay loop
@@ -95,19 +90,19 @@ class replay_memory:
         
         
     def is_full(self):
-        # Boolean return if the memory is full. Since then the update starts
+        # Boolean return if the memory is sufficient full.
         return True if len(self.memory) == self.memory_size else False
 
 
     def q_learning_and_optimize(self, target_dqn, action_dqn):
         """
-        This Q-Learning update based on the original paper from deepmind:
+        This Q-learning update based on the original paper from deepmind:
         Human-level control through deep reinforcement learning.
         The learning happens on a replay memory of the recording.
         """
         
-        # Random sample with minibatch size from memory after the 
-        # memory is sufficiant full with experiences
+        # Random sample with minibatch size from replay memory after the 
+        # memory is sufficient full with experiences.
         if self.is_full():
 
             # Display first training
@@ -126,7 +121,7 @@ class replay_memory:
                     target_action_values[action] = next_reward
 
                 else:
-                    # learning Bellman equation by update rule
+                    # Learning Bellman equation by update rule
                     target_action_values[action] = next_reward + self.gamma * max(target_dqn.get_q_values(new_state))
 
                 # Perform a gradient descent step with respect to the action dqn parameter
@@ -164,14 +159,15 @@ class writer:
         
         
     def save(self, name):
-
+        
+        # Create a directory
         if not os.path.exists("data/history/{}".format(name)):
             os.makedirs("data/history/{}".format(name))
         
-        # convert into JSON
+        # Convert into JSON
         y = json.dumps(self.history)
         
-        # write to local
+        # Write to local
         f = open("./data/history/{}/history.json".format(name), "w+")
         f.write(y)
         f.close()
@@ -191,7 +187,7 @@ class agent:
         # Display game
         self.render = render
         
-        # The action dimention that the agent may take in every step
+        # The action dimention
         self.action_dim = self.env.action_space.n
         
         # The observation dimention the agent observes
@@ -206,11 +202,11 @@ class agent:
         # Create a neural network as target network for the learning phase
         self.target_dqn = neural_network_keras(obs_dim = self.obs_dim, action_dim = self.action_dim, learning_rate = 0.005)
         
-        # History/ Storage for the results per episode
+        # History/ storage for the results per episode
         self.writer_history = writer()
 
         if self.training:
-            # Create replay memory only if the agent trained
+            # Create replay memory only if the agent trains
             self.replay_memory = replay_memory(memory_size = 2000, 
                                                batch_size = 32, 
                                                gamma = 0.99)
@@ -228,7 +224,7 @@ class agent:
 
     # Select action on a epsilon greedy algorithm.
     # During testing, epsilon is fix to avoit overfitting
-    # During training, the epsilon decrease liniear.
+    # During training, the epsilon decreases linear.
     def _epsilon_greedy(self, state):
 
         if self.training:
@@ -252,16 +248,16 @@ class agent:
 
         return action, action_values, self.epsilon
 
-
+    # Run the game 
     def run(self, num_episode, num_steps, try_name = ""):
 
         # Initial the run
         counter_episodes = 0
         counter_wins = 0 
-
+        
         while counter_episodes < num_episode:
 
-            # Init game after the end of an episode
+            # Init new game after the end of an episode
             counter_episodes += 1 # Count +1 episode
             targetUpdateStep = self.C # Keep track of the target value updates
             state = self.env.reset() # Reste game-environment
@@ -283,18 +279,19 @@ class agent:
                 # Add optimal action value to list
                 action_value_episode.append(max(action_values))
 
-                # Take the choosen action in the game environment and receive
+                # Execute the action in the game environment and receive
                 # the next state, reward and the episode status.
                 next_state, next_reward, done, _ = self.env.step(action)
 
                 # Modify reward
                 next_reward = next_state[0] 
                 
-                # Re-define the goal
+                # (Re-)define the goal
                 if next_state[0] >= 0.5:
                     counter_wins += 1 
                     done = True
                     next_reward = 10
+                    # Store the model if the car successfully completed the taks
                     if self.training:
                         self.action_dqn.save(try_name , "success_model_episode_{}.h5".format(counter_episodes)) 
 
@@ -315,7 +312,7 @@ class agent:
                     self.replay_memory.add(state, action, next_reward, next_state, done)
 
                     # Random sample a minibatch form the experience memory, 
-                    # update q values with DP and apply a gradient descent step
+                    # update q values with Dynamic Programming and apply a gradient descent step
                     # per sample from the minibatch
                     self.target_dqn, self.action_dqn = self.replay_memory \
                         .q_learning_and_optimize(target_dqn = self.target_dqn, action_dqn = self.action_dqn)
@@ -325,7 +322,7 @@ class agent:
                         weights_action = self.action_dqn.get_weights()
                         self.target_dqn.set_weights(weights_action)
                         targetUpdateStep += self.C # next update in C steps
-                        print("\t Update target DQN after %s steps" % targetUpdateStep)
+                        print("\t Update target DQN after %s steps" % counter_steps)
 
                 # Set state as next state
                 state = next_state 
