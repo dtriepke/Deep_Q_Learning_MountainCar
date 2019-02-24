@@ -1,4 +1,3 @@
-data/model/*
 __pycache__/*
 .ipynb_ckeckpoints/*
 mountainCar00_Original.py

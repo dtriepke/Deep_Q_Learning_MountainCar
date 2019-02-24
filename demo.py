@@ -1,4 +1,4 @@
-# Demo with best model from trainig
+# Demo with best model from training
 
 import deepQLearningSimple as dql
 import gym
