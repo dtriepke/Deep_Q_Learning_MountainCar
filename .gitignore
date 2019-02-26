@@ -1,5 +1,4 @@
 __pycache__/*
-.ipynb_ckeckpoints/*
+.ipynb_checkpoints/*
 mountainCar00_Original.py
-.ipynb_checkpoints/DeepQLearning-checkpoint.ipynb
-.ipynb_checkpoints/TestModels-checkpoint.ipynb
+
