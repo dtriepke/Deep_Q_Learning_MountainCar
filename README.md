@@ -1,3 +1,11 @@
+# Dependencies
+
+- `gym` 0.9.7
+- `numpy` 1.14.3
+- `keras` 2.2.4 / `tensorflow` 1.12.0
+
+import numpy as np
+
 # Table Of Content
 ***
 
@@ -5,6 +13,7 @@
 - `trainingEvaluation_v0.ipynb` results from trainnig with 500 episodes
 - `trainingEvaluation_v1.ipynb` results from training with 1000 episodes
 - `demo.py` run a demo with success models: 10, 50, 80, 100, 318
+
 
 **Demo**  
 In order to visualize the learning progressive, 6 ordered demo models can be run with with `python demo.py` in shell. 
